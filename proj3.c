@@ -59,10 +59,10 @@ struct obj_t {
     float y;
 };
 
-struct cluster_t {
-    int size;
-    int capacity;
-    struct obj_t *obj;
+struct cluster_t { //shluk objektu
+    int size; //pocet objetku ve shluku - v cluster_t
+    int capacity; //kapacita cluster_t (pocet obj_t, pro ktere je rezervovano misto v poli)
+    struct obj_t *obj; //ukazatel na pole shluku
 };
 
 /*****************************************************************
@@ -82,9 +82,15 @@ void init_cluster(struct cluster_t *c, int cap)
 {
     assert(c != NULL);
     assert(cap >= 0);
-
-    // TODO
-
+    
+    c->size = 0;
+    if(cap>0){
+        c->obj = malloc(sizeof(struct obj_t)*cap);
+        c->capacity = cap;
+    }else{
+        c->capacity = 0;
+        c->obj = NULL;
+    }
 }
 
 /*
@@ -92,7 +98,10 @@ void init_cluster(struct cluster_t *c, int cap)
  */
 void clear_cluster(struct cluster_t *c)
 {
-    // TODO
+    free(c->obj);
+    c->obj = NULL;
+    c->size = 0;
+    c->capacity = 0; 
 }
 
 /// Chunk of cluster objects. Value recommended for reallocation.
@@ -128,7 +137,10 @@ struct cluster_t *resize_cluster(struct cluster_t *c, int new_cap)
  */
 void append_cluster(struct cluster_t *c, struct obj_t obj)
 {
-    // TODO
+    if(c->size == c->capacity){
+        c = resize_cluseter(c, c->capacity+1);
+    }
+    //pridat objekt na konec shluku 
 }
 
 /*
@@ -146,7 +158,11 @@ void merge_clusters(struct cluster_t *c1, struct cluster_t *c2)
     assert(c1 != NULL);
     assert(c2 != NULL);
 
-    // TODO
+    if(c2->capacity > c1->capacity){
+        c1 = resize_cluster(c1,c2->capacity);
+    }
+    c1 = c2;
+    sort_cluster(c1);
 }
 
 /**********************************************************************/
@@ -264,9 +280,17 @@ void print_clusters(struct cluster_t *carr, int narr)
     }
 }
 
+void overeniArgumentu(int pocet_argc, char *pole_argv){
+
+    if(pocet_argc <= 1 || pocet_argc > 3){
+        fprintf(stderr, "neplatny argument");
+    }else if(pocet_argc == 2 || pocet_argc == 3){
+    }
+}
+
 int main(int argc, char *argv[])
 {
     struct cluster_t *clusters;
 
-    // TODO
+    overeniArgumentu(argc, argv);
 }
