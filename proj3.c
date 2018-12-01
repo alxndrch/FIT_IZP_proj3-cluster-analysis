@@ -10,7 +10,10 @@
 #include <assert.h>
 #include <math.h> // sqrtf
 #include <limits.h> // INT_MAX
+#include <string.h>
 
+
+#define SIZE 1024
 /*****************************************************************
  * Ladici makra. Vypnout jejich efekt lze definici makra
  * NDEBUG, napr.:
@@ -263,7 +266,43 @@ int load_clusters(char *filename, struct cluster_t **arr)
 {
     assert(arr != NULL);
 
-    // TODO
+    FILE *soubor;
+    soubor = fopen(filename, "r");
+    char first_line[SIZE];
+    int count = 0;
+
+    if(soubor != NULL){
+        fscanf(soubor,"%s",first_line);
+        if(strstr(first_line, "count=") != NULL){
+            //sscanf(first_line, "%*[^0-9]%[^\n]", first_line);
+            sscanf(first_line, "%*[^0-9]%d", &count);
+            //potreba osetrit P-hodnotu 
+
+            for(int i = 0;i<count;i++){
+                struct obj_t *objekt;
+                fscanf(soubor,"%d %d %d", objekt->id, objekt->x, objekt->y);
+                struct cluster_t *cluster;
+                cluster->capacity = 1;
+                cluster->size = 1;
+
+                if((cluster->obj = malloc(sizeof(struct obj_t)) != NULL)){
+                    cluster->obj = objekt;
+                }else{
+                    fprintf(stderr,"pamet nepridelena\n");
+                    exit(1);
+                }
+            }
+
+
+
+
+
+
+        }else{
+            fprintf(stderr, "Chyba v prvnim radku souboru");
+            exit(1);
+        }
+    }
 }
 
 /*
@@ -280,17 +319,22 @@ void print_clusters(struct cluster_t *carr, int narr)
     }
 }
 
-void overeniArgumentu(int pocet_argc, char *pole_argv){
+int overeniArgumentu(int pocet_argc, char *pole_argv){
 
     if(pocet_argc <= 1 || pocet_argc > 3){
         fprintf(stderr, "neplatny argument");
-    }else if(pocet_argc == 2 || pocet_argc == 3){
+        return 1;
     }
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
     struct cluster_t *clusters;
 
-    overeniArgumentu(argc, argv);
+    if(!overeniArgumentu(argc, argv)){
+        load_clusters(argv[1], &clusters);
+    }
+
+    return 0;
 }
