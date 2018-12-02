@@ -85,14 +85,16 @@ void init_cluster(struct cluster_t *c, int cap)
 {
     assert(c != NULL);
     assert(cap >= 0);
-    
-    c->size = 0;
-    if(cap>0){
-        c->obj = malloc(sizeof(struct obj_t)*cap);
-        c->capacity = cap;
-    }else{
-        c->capacity = 0;
-        c->obj = NULL;
+
+    if(c == NULL){
+        c->size = 0;
+        if(cap>0){
+            c->obj = malloc(sizeof(struct obj_t)*cap);
+            c->capacity = cap;
+        }else{
+            c->capacity = 0;
+            c->obj = NULL;
+        }
     }
 }
 
@@ -101,10 +103,12 @@ void init_cluster(struct cluster_t *c, int cap)
  */
 void clear_cluster(struct cluster_t *c)
 {
-    free(c->obj);
-    c->obj = NULL;
-    c->size = 0;
-    c->capacity = 0; 
+    if(c !=NULL){
+        free(c->obj);
+        c->obj = NULL;
+        c->size = 0;
+        c->capacity = 0; 
+    }
 }
 
 /// Chunk of cluster objects. Value recommended for reallocation.
@@ -140,10 +144,16 @@ struct cluster_t *resize_cluster(struct cluster_t *c, int new_cap)
  */
 void append_cluster(struct cluster_t *c, struct obj_t obj)
 {
-    if(c->size == c->capacity){
-        c = resize_cluseter(c, c->capacity+1);
+    if(c != NULL){
+        if(c->size == c->capacity){
+            c = resize_cluseter(c, c->capacity+1);
+        }
+        if (c->size < c->capacity)
+        {
+            c->obj[c->size] = obj;
+            c->size ++;
+        }
     }
-    //pridat objekt na konec shluku 
 }
 
 /*
@@ -162,9 +172,13 @@ void merge_clusters(struct cluster_t *c1, struct cluster_t *c2)
     assert(c2 != NULL);
 
     if(c2->capacity > c1->capacity){
-        c1 = resize_cluster(c1,c2->capacity);
+        c1 = resize_cluster(c1,c2->capacity+c1->size);
     }
-    c1 = c2;
+    
+    for (int i = 0; i < c2->size; i++) {
+		append_cluster(c1, c2->obj[i]);
+	}
+
     sort_cluster(c1);
 }
 
@@ -181,7 +195,9 @@ int remove_cluster(struct cluster_t *carr, int narr, int idx)
     assert(idx < narr);
     assert(narr > 0);
 
-    // TODO
+    clear_cluster(&carr[idx]);
+
+    return narr - 1;
 }
 
 /*
@@ -268,36 +284,30 @@ int load_clusters(char *filename, struct cluster_t **arr)
 
     FILE *soubor;
     soubor = fopen(filename, "r");
-    char first_line[SIZE];
+    char line[SIZE];
     int count = 0;
 
+    struct obj_t object;
+    struct cluster_t *cluster;
+
+    cluster = malloc(sizeof(struct cluster_t));
+
+
     if(soubor != NULL){
-        fscanf(soubor,"%s",first_line);
-        if(strstr(first_line, "count=") != NULL){
+        fscanf(soubor,"%[^\n]\n",line);
+        if(strstr(line, "count=") != NULL){
             //sscanf(first_line, "%*[^0-9]%[^\n]", first_line);
-            sscanf(first_line, "%*[^0-9]%d", &count);
-            //potreba osetrit P-hodnotu 
-
-            for(int i = 0;i<count;i++){
-                struct obj_t *objekt;
-                fscanf(soubor,"%d %d %d", objekt->id, objekt->x, objekt->y);
-                struct cluster_t *cluster;
-                cluster->capacity = 1;
-                cluster->size = 1;
-
-                if((cluster->obj = malloc(sizeof(struct obj_t)) != NULL)){
-                    cluster->obj = objekt;
-                }else{
-                    fprintf(stderr,"pamet nepridelena\n");
-                    exit(1);
-                }
+            sscanf(line, "%*[^0-9]%d", &count);
+            if(count <=0){
+                fprintf(stderr, "Neplatna hodnota count");
+                exit(1);
             }
-
-
-
-
-
-
+            init_cluster(arr, count);
+            for(int i = 0;i < count;i++){
+                //potreba overit vstupni hodnoty
+                fscanf(soubor,"%d %d %d ",&object.id, &object.x, &object.y);
+                append_cluster(arr, object);
+            } 
         }else{
             fprintf(stderr, "Chyba v prvnim radku souboru");
             exit(1);
