@@ -86,7 +86,9 @@ void init_cluster(struct cluster_t *c, int cap)
     assert(c != NULL);
     assert(cap >= 0);
 
+
     if(c == NULL){
+        c = malloc(sizeof(struct cluster_t));
         c->size = 0;
         if(cap>0){
             c->obj = malloc(sizeof(struct obj_t)*cap);
@@ -146,7 +148,7 @@ void append_cluster(struct cluster_t *c, struct obj_t obj)
 {
     if(c != NULL){
         if(c->size == c->capacity){
-            c = resize_cluseter(c, c->capacity+1);
+            c = resize_cluster(c, c->capacity+1);
         }
         if (c->size < c->capacity)
         {
@@ -207,8 +209,16 @@ float obj_distance(struct obj_t *o1, struct obj_t *o2)
 {
     assert(o1 != NULL);
     assert(o2 != NULL);
+    
+    if(o1 != NULL && o2 != NULL){
+        float distance = 0.0;
+        distance = sqrt(pow((o2->x) - (o1->x),2) + pow(o2->y - o1->y,2));
+        
+        return distance;
+    }
+    
+    return 0;
 
-    // TODO
 }
 
 /*
@@ -221,7 +231,11 @@ float cluster_distance(struct cluster_t *c1, struct cluster_t *c2)
     assert(c2 != NULL);
     assert(c2->size > 0);
 
-    // TODO
+    float distance = 0.0;
+
+    distance = obj_distance(c1->obj,c2->obj);
+
+    return distance;
 }
 
 /*
@@ -233,8 +247,12 @@ float cluster_distance(struct cluster_t *c1, struct cluster_t *c2)
 void find_neighbours(struct cluster_t *carr, int narr, int *c1, int *c2)
 {
     assert(narr > 0);
-
-    // TODO
+    if(narr > 0){
+        float cluster_dist = 0.0;
+        cluster_dist = cluster_distance(carr + 1, carr+2);
+        *c1 = 1;
+        *c2 = 2;
+    }
 }
 
 // pomocna funkce pro razeni shluku
@@ -256,7 +274,7 @@ void sort_cluster(struct cluster_t *c)
     // TUTO FUNKCI NEMENTE
     qsort(c->obj, c->size, sizeof(struct obj_t), &obj_sort_compar);
 }
-
+void print_clusters(struct cluster_t *carr, int narr);
 /*
  Tisk shluku 'c' na stdout.
 */
@@ -282,37 +300,49 @@ int load_clusters(char *filename, struct cluster_t **arr)
 {
     assert(arr != NULL);
 
+    *arr = NULL;
+    
+
     FILE *soubor;
     soubor = fopen(filename, "r");
     char line[SIZE];
     int count = 0;
 
+
     struct obj_t object;
-    struct cluster_t *cluster;
-
-    cluster = malloc(sizeof(struct cluster_t));
-
+    struct cluster_t *cluster = NULL;
 
     if(soubor != NULL){
         fscanf(soubor,"%[^\n]\n",line);
         if(strstr(line, "count=") != NULL){
-            //sscanf(first_line, "%*[^0-9]%[^\n]", first_line);
             sscanf(line, "%*[^0-9]%d", &count);
-            if(count <=0){
-                fprintf(stderr, "Neplatna hodnota count");
-                exit(1);
+
+            
+            //*arr = malloc(sizeof(struct cluster_t)*count);
+            cluster = malloc(sizeof(struct cluster_t)*count);
+            if(cluster == NULL){
+                fprintf(stderr,"problem pri alokaci pameti\n");
             }
-            init_cluster(arr, count);
-            for(int i = 0;i < count;i++){
-                //potreba overit vstupni hodnoty
-                fscanf(soubor,"%d %d %d ",&object.id, &object.x, &object.y);
-                append_cluster(arr, object);
-            } 
+            for(int i=0;i<count;i++){
+                fscanf(soubor,"%d %g %g \n",&object.id, &object.x, &object.y);
+                //printf("%d %g %g \n",object.id, object.x, object.y);
+                init_cluster((cluster+i), 1);
+                append_cluster((cluster+i), object);
+                print_cluster(cluster+i);
+            }
+            arr = &cluster;
+            print_clusters(*arr, count);
         }else{
-            fprintf(stderr, "Chyba v prvnim radku souboru");
+            fprintf(stderr, "Chyba v prvnim radku souboru\n");
             exit(1);
         }
+    }else{
+        fprintf(stderr, "soubor se nepodarilo nacist\n");
+        exit(1);
     }
+
+    free(cluster);
+    return 0;
 }
 
 /*
@@ -329,22 +359,20 @@ void print_clusters(struct cluster_t *carr, int narr)
     }
 }
 
-int overeniArgumentu(int pocet_argc, char *pole_argv){
 
-    if(pocet_argc <= 1 || pocet_argc > 3){
-        fprintf(stderr, "neplatny argument");
-        return 1;
-    }
-    return 0;
-}
 
 int main(int argc, char *argv[])
 {
-    struct cluster_t *clusters;
+    struct cluster_t *clusters = NULL;
 
-    if(!overeniArgumentu(argc, argv)){
-        load_clusters(argv[1], &clusters);
+    if(argc <= 1 || argc > 3){
+        fprintf(stderr, "neplatny argument\n");
+        return 1;
     }
+    load_clusters(argv[1], &clusters);
+
+    free(clusters);
+
 
     return 0;
 }
