@@ -86,19 +86,16 @@ void init_cluster(struct cluster_t *c, int cap)
     assert(c != NULL);
     assert(cap >= 0);
 
-
-    if(c == NULL){
-        c = malloc(sizeof(struct cluster_t));
-        c->size = 0;
-        if(cap>0){
-            c->obj = malloc(sizeof(struct obj_t)*cap);
-            c->capacity = cap;
-        }else{
-            c->capacity = 0;
-            c->obj = NULL;
-        }
+    c->size = 0;
+    if(cap>0){
+        c->obj = malloc(sizeof(struct obj_t)*cap);
+        c->capacity = cap;
+    }else{
+        c->capacity = 0;
+        c->obj = NULL;
     }
 }
+
 
 /*
  Odstraneni vsech objektu shluku a inicializace na prazdny shluk.
@@ -212,7 +209,7 @@ float obj_distance(struct obj_t *o1, struct obj_t *o2)
     
     if(o1 != NULL && o2 != NULL){
         float distance = 0.0;
-        distance = sqrt(pow((o2->x) - (o1->x),2) + pow(o2->y - o1->y,2));
+        distance = sqrtf(powf((o2->x) - (o1->x),2.0) + powf((o2->y) - (o1->y),2.0));
         
         return distance;
     }
@@ -301,7 +298,6 @@ int load_clusters(char *filename, struct cluster_t **arr)
     assert(arr != NULL);
 
     *arr = NULL;
-    
 
     FILE *soubor;
     soubor = fopen(filename, "r");
@@ -310,28 +306,25 @@ int load_clusters(char *filename, struct cluster_t **arr)
 
 
     struct obj_t object;
-    struct cluster_t *cluster = NULL;
+    struct cluster_t *clusters = NULL;
 
     if(soubor != NULL){
         fscanf(soubor,"%[^\n]\n",line);
         if(strstr(line, "count=") != NULL){
             sscanf(line, "%*[^0-9]%d", &count);
 
-            
-            //*arr = malloc(sizeof(struct cluster_t)*count);
-            cluster = malloc(sizeof(struct cluster_t)*count);
-            if(cluster == NULL){
+            clusters = malloc(sizeof(struct cluster_t)*count);
+            if(clusters == NULL){
                 fprintf(stderr,"problem pri alokaci pameti\n");
             }
+            count = 8;
             for(int i=0;i<count;i++){
                 fscanf(soubor,"%d %g %g \n",&object.id, &object.x, &object.y);
-                //printf("%d %g %g \n",object.id, object.x, object.y);
-                init_cluster((cluster+i), 1);
-                append_cluster((cluster+i), object);
-                print_cluster(cluster+i);
+                init_cluster((clusters+i), 1);
+                append_cluster((clusters+i), object);
             }
-            arr = &cluster;
-            print_clusters(*arr, count);
+            arr = &clusters;
+            //print_clusters(*arr,count);
         }else{
             fprintf(stderr, "Chyba v prvnim radku souboru\n");
             exit(1);
@@ -341,7 +334,26 @@ int load_clusters(char *filename, struct cluster_t **arr)
         exit(1);
     }
 
-    free(cluster);
+    count = 8;
+    //printf("%g\n",cluster_distance((clusters+0), (clusters+1)));
+    float clus_distance = INT_MAX;
+    float clus_distance_new = 0.0;
+    int position = 0;
+
+    for(int j = 0; j<count;j++){
+        for(int i = 0; i <count-1;i++){
+            clus_distance_new = cluster_distance((clusters+j), (clusters+i+1));
+            if(clus_distance > clus_distance_new){
+                clus_distance = clus_distance_new;
+                position = i;
+            }
+        }
+        merge_clusters((clusters+j), (clusters+position));
+        resize_cluster((clusters+position),0);
+        clear_cluster((clusters+position));
+        remove_cluster(clusters,count,position);
+    }
+    print_clusters(clusters,count);
     return 0;
 }
 
@@ -363,7 +375,7 @@ void print_clusters(struct cluster_t *carr, int narr)
 
 int main(int argc, char *argv[])
 {
-    struct cluster_t *clusters = NULL;
+    struct cluster_t *clusters;
 
     if(argc <= 1 || argc > 3){
         fprintf(stderr, "neplatny argument\n");
