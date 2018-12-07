@@ -229,8 +229,16 @@ float cluster_distance(struct cluster_t *c1, struct cluster_t *c2)
     assert(c2->size > 0);
 
     float distance = 0.0;
+    float distance_new = 0.0;
 
-    distance = obj_distance(c1->obj,c2->obj);
+    for(int j = 0; j<c1->size;j++){
+        for(int i = 0; i <c2->size;i++){
+            distance = obj_distance(&c1->obj[j],&c2->obj[i]);
+            if(distance > distance_new){
+                distance = distance_new;
+            }
+        }
+    }
 
     return distance;
 }
@@ -245,8 +253,8 @@ void find_neighbours(struct cluster_t *carr, int narr, int *c1, int *c2)
 {
     assert(narr > 0);
     if(narr > 0){
-        float cluster_dist = 0.0;
-        cluster_dist = cluster_distance(carr + 1, carr+2);
+        float cluster = 0.0;
+        cluster = cluster_distance(carr + 1, carr+2);
         *c1 = 1;
         *c2 = 2;
     }
@@ -306,7 +314,7 @@ int load_clusters(char *filename, struct cluster_t **arr)
 
 
     struct obj_t object;
-    struct cluster_t *clusters = NULL;
+    struct cluster_t *clusters;
 
     if(soubor != NULL){
         fscanf(soubor,"%[^\n]\n",line);
@@ -323,8 +331,11 @@ int load_clusters(char *filename, struct cluster_t **arr)
                 init_cluster((clusters+i), 1);
                 append_cluster((clusters+i), object);
             }
-            arr = &clusters;
-            //print_clusters(*arr,count);
+            *arr = clusters;
+            print_clusters(clusters,count);
+            free(clusters);
+            clusters = NULL;
+            print_clusters(*arr,count);
         }else{
             fprintf(stderr, "Chyba v prvnim radku souboru\n");
             exit(1);
@@ -334,27 +345,7 @@ int load_clusters(char *filename, struct cluster_t **arr)
         exit(1);
     }
 
-    count = 8;
-    //printf("%g\n",cluster_distance((clusters+0), (clusters+1)));
-    float clus_distance = INT_MAX;
-    float clus_distance_new = 0.0;
-    int position = 0;
-
-    for(int j = 0; j<count;j++){
-        for(int i = 0; i <count-1;i++){
-            clus_distance_new = cluster_distance((clusters+j), (clusters+i+1));
-            if(clus_distance > clus_distance_new){
-                clus_distance = clus_distance_new;
-                position = i;
-            }
-        }
-        merge_clusters((clusters+j), (clusters+position));
-        resize_cluster((clusters+position),0);
-        clear_cluster((clusters+position));
-        remove_cluster(clusters,count,position);
-    }
-    print_clusters(clusters,count);
-    return 0;
+    return count;
 }
 
 /*
@@ -384,6 +375,7 @@ int main(int argc, char *argv[])
     load_clusters(argv[1], &clusters);
 
     free(clusters);
+    clusters = NULL;
 
 
     return 0;
