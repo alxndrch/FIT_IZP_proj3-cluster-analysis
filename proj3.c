@@ -1,9 +1,5 @@
 /**
- * Kostra programu pro 3. projekt IZP 2017/18
- *
- * Jednoducha shlukova analyza
- * Unweighted pair-group average
- * https://is.muni.cz/th/172767/fi_b/5739129/web/web/usrov.html
+ * vyvtoril Alexandr Chalupnik (xchalu15)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -323,8 +319,8 @@ int load_clusters(char *filename, struct cluster_t **arr)
     FILE *soubor;
     soubor = fopen(filename, "r");
     char line[SIZE];
-    int count_fl = 0;
-    int num_of_obj = 0;
+    int count_fl = 0; // "count=" hodnota
+    int num_of_obj = 0; //pocet skutecne nactenych clusteru
 
     struct obj_t object;
 
@@ -344,11 +340,11 @@ int load_clusters(char *filename, struct cluster_t **arr)
                 return -1;
             }
             
-            for(int i = 0; i<count_fl;i++){ //20
+            for(int i = 0; i<count_fl;i++){ //nacitani objektu 
                 if((fscanf(soubor,"%[^\n]\n",line)) != EOF){
                     if((sscanf(line,"%d %g %g \n",&object.id, &object.x, &object.y)) == 3){
                         if((object.x >= 0 && object.x <= 1000) && (object.y >= 0 && object.y <= 1000)){  
-                            if(check_obj_id(*arr,num_of_obj,object.id)){
+                            if(check_obj_id(*arr,num_of_obj,object.id)){ //overiju zda jiz nactene id existuje
                                 init_cluster(*arr+num_of_obj, 1);
                                 append_cluster(*arr+num_of_obj, object);
                                 num_of_obj++;
@@ -358,7 +354,7 @@ int load_clusters(char *filename, struct cluster_t **arr)
                 }
             }
 
-            while(count_fl != num_of_obj){
+            while(count_fl != num_of_obj){ //smaze prebytecne clustery, pri situaci kdy je objektu mene nez je dano v "count="  
                 count_fl = remove_cluster(*arr,count_fl,count_fl-1);
             }
         }else{
@@ -387,6 +383,9 @@ void print_clusters(struct cluster_t *carr, int narr)
     }
 }
 
+/*
+Overeni objektu se stejnym parametrem ID. 
+*/
 int check_obj_id(struct cluster_t *arr,int arr_size, int id){
     
     for(int i = 0; i<arr_size;i++){
@@ -401,10 +400,10 @@ int check_obj_id(struct cluster_t *arr,int arr_size, int id){
 int main(int argc, char *argv[])
 {
     struct cluster_t *clusters;
-    int c1 = 0;
-    int c2 = 0;
-    int obj_count = 0;
-    int req_clusters = 1;
+    int c1 = 0; //pomocna promena pro find_neighbours
+    int c2 = 0; //pomocna promena pro find_neighbours
+    int obj_count = 0; //pocet nactenych clusteru
+    int req_clusters = 1; //pozadovany pocet clusteru, z argumentu
     
     if(argc <= 1 || argc > 4){
         fprintf(stderr, "neplatny argument\n");
@@ -420,21 +419,24 @@ int main(int argc, char *argv[])
 
     obj_count = load_clusters(argv[1], &clusters);
 
-    if(req_clusters > obj_count){
-        fprintf(stderr, "pozadovany pocet shluku je vyssi nez pocet nactenych shluku\n");
-        free(clusters);
-        return 1;
-    }
+    if(obj_count != -1){ //pokud v load_cluster nastala chyba vraci funkce "-1"
+        if(req_clusters > obj_count){
+            fprintf(stderr, "pozadovany pocet shluku je vyssi nez pocet nactenych shluku\n");
+            clear_cluster(clusters);
+            clusters = NULL;
+            return 1;
+        }
 
-    while(obj_count != req_clusters){
-        find_neighbours(clusters, obj_count, &c1, &c2);
-        merge_clusters(clusters+c1, clusters+c2);
-        obj_count = remove_cluster(clusters,obj_count,c2);
-    }
+        while(obj_count != req_clusters){
+            find_neighbours(clusters, obj_count, &c1, &c2);
+            merge_clusters(clusters+c1, clusters+c2);
+            obj_count = remove_cluster(clusters,obj_count,c2);
+        }
 
-    print_clusters(clusters,obj_count);
-    clear_cluster(clusters);
-    clusters = NULL;
+        print_clusters(clusters,obj_count);
+        clear_cluster(clusters);
+        clusters = NULL;
+    }
 
     return 0;
 }
