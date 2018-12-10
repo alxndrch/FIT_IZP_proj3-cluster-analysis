@@ -59,10 +59,10 @@ struct obj_t {
     float y;
 };
 
-struct cluster_t { //shluk objektu
-    int size; //pocet objetku ve shluku - v cluster_t
-    int capacity; //kapacita cluster_t (pocet obj_t, pro ktere je rezervovano misto v poli)
-    struct obj_t *obj; //ukazatel na pole shluku
+struct cluster_t {
+    int size;
+    int capacity;
+    struct obj_t *obj;
 };
 
 /*****************************************************************
@@ -100,7 +100,7 @@ void init_cluster(struct cluster_t *c, int cap)
  */
 void clear_cluster(struct cluster_t *c)
 {
-    if(c !=NULL){
+    if(c != NULL){
         free(c->obj);
         c->obj = NULL;
         c->size = 0;
@@ -331,20 +331,27 @@ int load_clusters(char *filename, struct cluster_t **arr)
 
             if(count_fl<0){
                 fprintf(stderr, "Chyba v prvnim radku souboru\n");
+                fclose(soubor);
                 return -1;
             }
             
             *arr = malloc(sizeof(struct cluster_t)*count_fl);
             if(*arr == NULL){
                 fprintf(stderr,"problem pri alokaci pameti\n");
+                fclose(soubor);
                 return -1;
             }
             
             for(int i = 0; i<count_fl;i++){ //nacitani objektu 
                 if((fscanf(soubor,"%[^\n]\n",line)) != EOF){
-                    if((sscanf(line,"%d %g %g \n",&object.id, &object.x, &object.y)) == 3){
-                        if((object.x >= 0 && object.x <= 1000) && (object.y >= 0 && object.y <= 1000)){  
-                            if(check_obj_id(*arr,num_of_obj,object.id)){ //overiju zda jiz nactene id existuje
+                    if((sscanf(line,"%d %g %g \n",
+			            &object.id, 
+			            &object.x, 
+			            &object.y)) == 3){
+                        if((object.x >= 0 && object.x <= 1000) && 
+			   (object.y >= 0 && object.y <= 1000)){  
+                            if(check_obj_id(*arr,num_of_obj,object.id)){ 
+				//overeni zda jiz nactene id existuje
                                 init_cluster(*arr+num_of_obj, 1);
                                 append_cluster(*arr+num_of_obj, object);
                                 num_of_obj++;
@@ -354,18 +361,23 @@ int load_clusters(char *filename, struct cluster_t **arr)
                 }
             }
 
-            while(count_fl != num_of_obj){ //smaze prebytecne clustery, pri situaci kdy je objektu mene nez je dano v "count="  
+            while(count_fl != num_of_obj){ 
+	    //smaze prebytecne clustery,
+	    //pri situaci kdy je objektu mene nez je dano v "count="  
                 count_fl = remove_cluster(*arr,count_fl,count_fl-1);
             }
         }else{
+	    fclose(soubor);	
             fprintf(stderr, "Chyba v prvnim radku souboru\n");
             return -1;
         }
     }else{
+	fclose(soubor);
+	free(arr);
         fprintf(stderr, "soubor se nepodarilo nacist\n");
         return -1;
     }
-
+    fclose(soubor);
     return count_fl;
 }
 
@@ -419,10 +431,15 @@ int main(int argc, char *argv[])
 
     obj_count = load_clusters(argv[1], &clusters);
 
-    if(obj_count != -1){ //pokud v load_cluster nastala chyba vraci funkce "-1"
+    if(obj_count != -1){ 
+     //pokud v load_cluster nastala chyba vraci funkce "-1"
         if(req_clusters > obj_count){
             fprintf(stderr, "pozadovany pocet shluku je vyssi nez pocet nactenych shluku\n");
-            clear_cluster(clusters);
+
+            while(obj_count != 0){
+                obj_count = remove_cluster(clusters,obj_count,obj_count-1);
+            }
+	    free(clusters);
             clusters = NULL;
             return 1;
         }
@@ -434,9 +451,13 @@ int main(int argc, char *argv[])
         }
 
         print_clusters(clusters,obj_count);
-        clear_cluster(clusters);
+        while(obj_count != 0){
+                obj_count = remove_cluster(clusters,obj_count,obj_count-1);
+        }
+	free(clusters);
         clusters = NULL;
     }
 
     return 0;
 }
+
